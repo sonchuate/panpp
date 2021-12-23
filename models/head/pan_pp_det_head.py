@@ -8,6 +8,7 @@ import torch.nn as nn
 
 from ..loss import build_loss, iou, ohem_batch
 from ..post_processing import pa
+from ..post_processing import n_pa
 from ..utils import CoordConv2d
 
 
@@ -79,7 +80,7 @@ class PAN_PP_DetHead(nn.Module):
         kernels = kernels.data.cpu().numpy()[0].astype(np.uint8)
         emb = emb.cpu().numpy()[0].astype(np.float32)
 
-        label = pa(kernels, emb,
+        label = n_pa(kernels, emb,
                    cfg.test_cfg.min_kernel_area / (cfg.test_cfg.scale**2))
 
         if cfg.report_speed:

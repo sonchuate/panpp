@@ -99,7 +99,7 @@ def main(args):
     cfg = Config.fromfile(args.config)
     for d in [cfg, cfg.data.test]:
         d.update(dict(report_speed=args.report_speed))
-    print(json.dumps(cfg._cfg_dict, indent=4))
+    # print(json.dumps(cfg._cfg_dict, indent=4))
     sys.stdout.flush()
 
     # data loader
@@ -140,7 +140,7 @@ def main(args):
 
     # fuse conv and bn
     model = fuse_module(model)
-    model_structure(model)
+    # model_structure(model)
     # test
     test(test_loader, model, cfg)
 

@@ -301,7 +301,11 @@ class Decoder(nn.Module):
             score, idx = torch.max(score, dim=1)
             seq[:, t] = idx
             seq_score[:, t] = score
-            end = end & (idx != self.START_TOKEN)
+
+            temp = idx != self.START_TOKEN
+            end = end.bool() & temp
+
+            # end = end & (idx != self.START_TOKEN)
             if torch.sum(end) == 0:
                 break
 

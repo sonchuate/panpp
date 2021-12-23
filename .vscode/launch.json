@@ -1,0 +1,39 @@
+{
+    // 使用 IntelliSense 以得知可用的屬性。
+    // 暫留以檢視現有屬性的描述。
+    // 如需詳細資訊，請瀏覽: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "eval",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/eval/ic15/script.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-g=/root/Storage/pan_pp.pytorch/eval/ic15/gt.zip", "-s=/root/Storage/pan_pp.pytorch/outputs/submit_ic15.zip"
+            ]
+        },
+        {
+            "name": "test",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/test.py",
+            "console": "integratedTerminal",
+            "args": [
+                "config/pan_pp/pan_pp_r18_ic15_joint_train.py",
+                "trained/panpp_r18_joint_train.pth.tar"
+            ]
+        },
+        {
+            "name": "train",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/train.py",
+            "console": "integratedTerminal",
+            "args": [
+                "config/pan_pp/pan_pp_r18_ic15.py"
+            ]
+        }
+    ]
+}
