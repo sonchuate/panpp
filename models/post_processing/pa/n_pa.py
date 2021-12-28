@@ -21,7 +21,7 @@ def _pa(kernels, emb, label, cc, kernel_num, label_num, min_area=0):
 
     max_rate = 1024
     for i in range(1, label_num):
-        ind = label == i
+        ind = label == i  # kernel cc
         inds[i] = ind
 
         area[i] = np.sum(ind)
