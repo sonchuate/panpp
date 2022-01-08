@@ -12,7 +12,7 @@ import Polygon as plg
 """
 Input format: y0,x0, ..... yn,xn. Each detection is separated by the end of line token ('\n')'
 """
-project_root = '../../'
+project_root = '/root/Storage/panpp/'
 
 input_dir = project_root + 'outputs/submit_tt/'
 gt_dir = project_root + 'data/total_text/Groundtruth/Polygon/Test/'

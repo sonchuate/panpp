@@ -5,13 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "eval",
+            "name": "eval_tt",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceRoot}/eval/tt/Deteval.py",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "eval_ic15",
             "type": "python",
             "request": "launch",
             "program": "${workspaceRoot}/eval/ic15/script.py",
             "console": "integratedTerminal",
             "args": [
-                "-g=/root/Storage/pan_pp.pytorch/eval/ic15/gt.zip", "-s=/root/Storage/pan_pp.pytorch/outputs/submit_ic15.zip"
+                "-g=/root/Storage/panpp/eval/ic15/gt.zip",
+                "-s=/root/Storage/panpp/outputs/submit_ic15.zip"
             ]
         },
         {
@@ -21,8 +29,11 @@
             "program": "${workspaceRoot}/test.py",
             "console": "integratedTerminal",
             "args": [
-                "config/pan_pp/pan_pp_r18_ic15_joint_train.py",
-                "trained/panpp_r18_joint_train.pth.tar"
+                // "config/pan_pp/pan_pp_r18_ic15_joint_train.py",
+                // "trained/panpp_r18_joint_train.pth.tar"
+                "config/pan_pp/pan_pp_r18_tt.py",
+                "checkpoints/pan_pp_r18_tt/checkpoint.pth.tar"
+                // "--report_speed"
             ]
         },
         {
@@ -32,7 +43,7 @@
             "program": "${workspaceRoot}/train.py",
             "console": "integratedTerminal",
             "args": [
-                "config/pan_pp/pan_pp_r18_ic15.py"
+                "config/pan_pp/pan_pp_r18_tt.py"
             ]
         }
     ]
