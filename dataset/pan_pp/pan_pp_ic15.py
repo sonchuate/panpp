@@ -12,14 +12,21 @@ import torchvision.transforms as transforms
 from PIL import Image
 from torch.utils import data
 
-ic15_root_dir = './data/ICDAR2015/Challenge4/'
-ic15_train_data_dir = ic15_root_dir + 'ch4_training_images/'
-ic15_train_gt_dir = ic15_root_dir + \
-                    'ch4_training_localization_transcription_gt/'
-ic15_test_data_dir = ic15_root_dir + 'ch4_test_images/'
-ic15_test_gt_dir = ic15_root_dir + \
-                   'ch4_test_localization_transcription_gt/'
+# ic15_root_dir = './data/ICDAR2015/Challenge4/'
 
+# ic15_train_data_dir = ic15_root_dir + 'ch4_training_images/'
+# ic15_train_gt_dir = ic15_root_dir + 'ch4_training_localization_transcription_gt/'
+
+# ic15_test_data_dir = ic15_root_dir + 'ch4_test_images/'
+# ic15_test_gt_dir = ic15_root_dir + 'ch4_test_localization_transcription_gt/'
+
+ic15_root_dir = '/root/Storage/datasets/ICDAR2015/'
+
+ic15_train_data_dir = ic15_root_dir + 'train/train_images/'
+ic15_train_gt_dir = ic15_root_dir + 'train/train_gts/'
+
+ic15_test_data_dir = ic15_root_dir + 'test/test_images/'
+ic15_test_gt_dir = ic15_root_dir + 'test/test_gts/'
 
 def get_img(img_path, read_type='pil'):
     try:
@@ -297,12 +304,25 @@ class PAN_PP_IC15(data.Dataset):
                 img_path = data_dir + img_name
                 img_paths.append(img_path)
 
-                gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
+                # gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
+                gt_name = img_name + '.txt'
                 gt_path = gt_dir + gt_name
                 gt_paths.append(gt_path)
 
             self.img_paths.extend(img_paths)
             self.gt_paths.extend(gt_paths)
+
+        # self.img_paths = []
+        # self.img_paths.append('/root/Storage/panpp/img_1.jpg')
+        # self.img_paths.append('/root/Storage/panpp/img_2.jpg')
+        # self.img_paths.append('/root/Storage/panpp/img_3.jpg')
+        # self.img_paths.append('/root/Storage/panpp/img_4.jpg')
+        
+        # self.gt_paths = []
+        # self.gt_paths.append('/root/Storage/datasets/ICDAR2015/test/test_gts/img_1.jpg.txt')
+        # self.gt_paths.append('/root/Storage/datasets/ICDAR2015/test/test_gts/img_2.jpg.txt')
+        # self.gt_paths.append('/root/Storage/datasets/ICDAR2015/test/test_gts/img_3.jpg.txt')
+        # self.gt_paths.append('/root/Storage/datasets/ICDAR2015/test/test_gts/img_4.jpg.txt')
 
         if report_speed:
             target_size = 3000

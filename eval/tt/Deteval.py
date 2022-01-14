@@ -125,7 +125,7 @@ k = 2
 
 for input_id in allInputs:
     if (input_id != '.DS_Store'):
-        print('input_id', input_id)
+        # print('input_id', input_id)
         detections = input_reading_mod(input_dir, input_id)
         # from IPython import embed;
         groundtruths = gt_reading_mod(gt_dir, input_id)
@@ -284,7 +284,7 @@ def many_to_many(local_sigma_table, local_tau_table, local_accumulative_recall,
 
 
 for idx in xrange(len(global_sigma)):
-    print(allInputs[idx])
+    # print(allInputs[idx])
     local_sigma_table = global_sigma[idx]
     local_tau_table = global_tau[idx]
 
@@ -383,9 +383,9 @@ except ZeroDivisionError:
 
 fid = open(fid_path, 'a')
 hmean = 2 * precision * recall / (precision + recall)
-temp = ('Precision:_%s_______/Recall:_%s/Hmean:_%s\n' % (str(precision), str(recall), str(hmean)))
+temp = ('\nPrecision:_%s_______/Recall:_%s/Hmean:_%s\n' % (str(precision), str(recall), str(hmean)))
 print(temp)
 fid.write(temp)
 fid.close()
 
-print('pb')
+# print('pb')

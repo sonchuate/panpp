@@ -37,9 +37,10 @@ model = dict(
     )
 )
 data = dict(
-    batch_size=16,
+    batch_size=2,
+    num_workers=0,
     train=dict(
-        type='PAN_PP_JointTrain',
+        type='PAN_PP_Joint_Train',
         split='train',
         is_transform=True,
         img_size=736,
@@ -72,9 +73,9 @@ test_cfg = dict(
     result_path='outputs/submit_ic15_rec.zip',
     rec_post_process=dict(
         len_thres=3,
-        score_thres=0.95,
-        unalpha_score_thres=0.9,
-        ignore_score_thres=0.93,
+        score_thres=0.95, # 0.95
+        unalpha_score_thres=0.9, # 0.9
+        ignore_score_thres=0.93, # 0.93
         editDist_thres=2,
         voc_path=None #'./data/ICDAR2015/Challenge4/GenericVocabulary.txt'
     ),

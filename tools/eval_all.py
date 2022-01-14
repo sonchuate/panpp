@@ -4,7 +4,7 @@ from natsort import natsorted
 
 def eval_tt():
 
-    model_root = '/root/Storage/panpp/checkpoints/pan_pp_r18_tt/'
+    model_root = '/root/Storage/panpp/checkpoints/pan_pp_tt/'
     print(model_root)
     model_list = natsorted(os.listdir(model_root), reverse=True)
     model_list.remove('checkpoint.pth.tar')
@@ -16,7 +16,7 @@ def eval_tt():
             os.chdir('/root/Storage/panpp')
 
             subprocess.call([
-                '/root/anaconda3/envs/pan/bin/python', 'test.py', 'config/pan_pp/pan_pp_r18_tt.py',
+                '/root/anaconda3/envs/pan/bin/python', 'test.py', 'config/pan_pp/pan_pp_tt.py',
                 model_root + model
             ])
 

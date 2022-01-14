@@ -31,8 +31,8 @@ model = dict(
     )
 )
 data = dict(
-    batch_size=2,
-    num_workers=0,
+    batch_size=16, # 16
+    num_workers=8, # 8
     train=dict(
         type='PAN_PP_IC15',
         split='train',

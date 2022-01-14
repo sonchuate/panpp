@@ -80,7 +80,7 @@ class PAN_PP_DetHead(nn.Module):
         kernels = kernels.data.cpu().numpy()[0].astype(np.uint8)
         emb = emb.cpu().numpy()[0].astype(np.float32)
 
-        label = n_pa(kernels, emb,
+        label = pa(kernels, emb,
                    cfg.test_cfg.min_kernel_area / (cfg.test_cfg.scale**2))
 
         if cfg.report_speed:
@@ -121,8 +121,8 @@ class PAN_PP_DetHead(nn.Module):
                 continue
 
             if with_rec:
-                tl = np.min(points, axis=0)
-                br = np.max(points, axis=0) + 1
+                tl = np.min(points, axis=0) # top left
+                br = np.max(points, axis=0) + 1 # bottom right
                 bboxes_h[0, i] = (tl[0], tl[1], br[0], br[1])
                 instances[0].append(i)
 

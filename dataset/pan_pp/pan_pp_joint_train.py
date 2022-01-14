@@ -16,7 +16,7 @@ from torch.utils import data
 from .coco_text import COCO_Text
 
 EPS = 1e-6
-synth_root_dir = './data/SynthText/'
+synth_root_dir = '/root/Storage/datasets/SynthText/'
 synth_train_data_dir = synth_root_dir
 synth_train_gt_path = synth_root_dir + 'gt.mat'
 
@@ -385,80 +385,92 @@ class PAN_PP_Joint_Train(data.Dataset):
         self.texts = {}
 
         self.img_num = 0
+
+        synth = False
+        ic17 = False
+        coco = False
+        ic15 = True
+        tt = False
+
         # synth
-        data = scio.loadmat(synth_train_gt_path)
-        self.img_paths['synth'] = data['imnames'][0]
-        self.gts['synth'] = data['wordBB'][0]
-        self.texts['synth'] = data['txt'][0]
-        self.img_num += len(self.img_paths['synth'])
+        if synth:
+            data = scio.loadmat(synth_train_gt_path)
+            self.img_paths['synth'] = data['imnames'][0]
+            self.gts['synth'] = data['wordBB'][0]
+            self.texts['synth'] = data['txt'][0]
+            self.img_num += len(self.img_paths['synth'])
 
         # ic17
-        self.img_paths['ic17'] = []
-        self.gts['ic17'] = []
-        img_names = [
-            img_name
-            for img_name in mmcv.utils.scandir(ic17_train_data_dir, '.jpg')
-        ]
-        img_names.extend([
-            img_name
-            for img_name in mmcv.utils.scandir(ic17_train_data_dir, '.png')
-        ])
-        for idx, img_name in enumerate(img_names):
-            img_path = ic17_train_data_dir + img_name
-            self.img_paths['ic17'].append(img_path)
+        if ic17:
+            self.img_paths['ic17'] = []
+            self.gts['ic17'] = []
+            img_names = [
+                img_name
+                for img_name in mmcv.utils.scandir(ic17_train_data_dir, '.jpg')
+            ]
+            img_names.extend([
+                img_name
+                for img_name in mmcv.utils.scandir(ic17_train_data_dir, '.png')
+            ])
+            for idx, img_name in enumerate(img_names):
+                img_path = ic17_train_data_dir + img_name
+                self.img_paths['ic17'].append(img_path)
 
-            gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
-            gt_path = ic17_train_gt_dir + gt_name
-            self.gts['ic17'].append(gt_path)
-        self.img_num += len(self.img_paths['ic17'])
+                gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
+                gt_path = ic17_train_gt_dir + gt_name
+                self.gts['ic17'].append(gt_path)
+            self.img_num += len(self.img_paths['ic17'])
 
         # coco_text
-        self.ct = COCO_Text(ct_train_gt_path)
-        self.img_paths['ct'] = self.ct.getImgIds(imgIds=self.ct.train,
-                                                 catIds=[('legibility',
-                                                          'legible')])
-        self.img_num += len(self.img_paths['ct'])
+        if coco:
+            self.ct = COCO_Text(ct_train_gt_path)
+            self.img_paths['ct'] = self.ct.getImgIds(imgIds=self.ct.train,
+                                                    catIds=[('legibility',
+                                                            'legible')])
+            self.img_num += len(self.img_paths['ct'])
 
         # ic15
-        self.img_paths['ic15'] = []
-        self.gts['ic15'] = []
-        img_names = [
-            img_name
-            for img_name in mmcv.utils.scandir(ic15_train_data_dir, '.jpg')
-        ]
-        img_names.extend([
-            img_name
-            for img_name in mmcv.utils.scandir(ic15_train_data_dir, '.png')
-        ])
-        for idx, img_name in enumerate(img_names):
-            img_path = ic15_train_data_dir + img_name
-            self.img_paths['ic15'].append(img_path)
+        if ic15:
+            self.img_paths['ic15'] = []
+            self.gts['ic15'] = []
+            img_names = [
+                img_name
+                for img_name in mmcv.utils.scandir(ic15_train_data_dir, '.jpg')
+            ]
+            img_names.extend([
+                img_name
+                for img_name in mmcv.utils.scandir(ic15_train_data_dir, '.png')
+            ])
+            for idx, img_name in enumerate(img_names):
+                img_path = ic15_train_data_dir + img_name
+                self.img_paths['ic15'].append(img_path)
 
-            gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
-            gt_path = ic15_train_gt_dir + gt_name
-            self.gts['ic15'].append(gt_path)
-        self.img_num += len(self.img_paths['ic15'])
+                gt_name = 'gt_' + img_name.split('.')[0] + '.txt'
+                gt_path = ic15_train_gt_dir + gt_name
+                self.gts['ic15'].append(gt_path)
+            self.img_num += len(self.img_paths['ic15'])
 
         # tt
-        self.img_paths['tt'] = []
-        self.gts['tt'] = []
-        img_names = [
-            img_name
-            for img_name in mmcv.utils.scandir(tt_train_data_dir, '.jpg')
-        ]
-        img_names.extend([
-            img_name
-            for img_name in mmcv.utils.scandir(tt_train_data_dir, '.png')
-        ])
+        if tt:
+            self.img_paths['tt'] = []
+            self.gts['tt'] = []
+            img_names = [
+                img_name
+                for img_name in mmcv.utils.scandir(tt_train_data_dir, '.jpg')
+            ]
+            img_names.extend([
+                img_name
+                for img_name in mmcv.utils.scandir(tt_train_data_dir, '.png')
+            ])
 
-        for idx, img_name in enumerate(img_names):
-            img_path = tt_train_data_dir + img_name
-            self.img_paths['tt'].append(img_path)
+            for idx, img_name in enumerate(img_names):
+                img_path = tt_train_data_dir + img_name
+                self.img_paths['tt'].append(img_path)
 
-            gt_name = 'poly_gt_' + img_name.split('.')[0] + '.mat'
-            gt_path = tt_train_gt_dir + gt_name
-            self.gts['tt'].append(gt_path)
-        self.img_num += len(self.img_paths['tt'])
+                gt_name = 'poly_gt_' + img_name.split('.')[0] + '.mat'
+                gt_path = tt_train_gt_dir + gt_name
+                self.gts['tt'].append(gt_path)
+            self.img_num += len(self.img_paths['tt'])
 
         self.voc, self.char2id, self.id2char = get_vocabulary('LOWERCASE')
         self.max_word_num = 200
@@ -508,22 +520,26 @@ class PAN_PP_Joint_Train(data.Dataset):
         return img, bboxes, words
 
     def __getitem__(self, index):
-        choice = random.random()
-        if choice < 1.0 / 5.0:
-            index = random.randint(0, len(self.img_paths['synth']) - 1)
-            img, bboxes, words = self.load_synth_single(index)
-        elif choice < 2.0 / 5.0:
-            index = random.randint(0, len(self.img_paths['ic17']) - 1)
-            img, bboxes, words = self.load_ic17_single(index)
-        elif choice < 3.0 / 5.0:
-            index = random.randint(0, len(self.img_paths['ct']) - 1)
-            img, bboxes, words = self.load_ct_single(index)
-        elif choice < 4.0 / 5.0:
-            index = random.randint(0, len(self.img_paths['ic15']) - 1)
-            img, bboxes, words = self.load_ic15_single(index)
-        else:
-            index = random.randint(0, len(self.img_paths['tt']) - 1)
-            img, bboxes, words = self.load_tt_single(index)
+        # choice = random.random()
+        # if choice < 1.0 / 5.0:
+        #     index = random.randint(0, len(self.img_paths['synth']) - 1)
+        #     img, bboxes, words = self.load_synth_single(index)
+        # elif choice < 2.0 / 5.0:
+        #     index = random.randint(0, len(self.img_paths['ic17']) - 1)
+        #     img, bboxes, words = self.load_ic17_single(index)
+        # elif choice < 3.0 / 5.0:
+        #     index = random.randint(0, len(self.img_paths['ct']) - 1)
+        #     img, bboxes, words = self.load_ct_single(index)
+        # elif choice < 4.0 / 5.0:
+        #     index = random.randint(0, len(self.img_paths['ic15']) - 1)
+        #     img, bboxes, words = self.load_ic15_single(index)
+        # else:
+        #     index = random.randint(0, len(self.img_paths['tt']) - 1)
+        #     img, bboxes, words = self.load_tt_single(index)
+
+        index = random.randint(0, len(self.img_paths['ic15']) - 1)
+        img, bboxes, words = self.load_ic15_single(index)
+
 
         if len(bboxes) > self.max_word_num:
             bboxes = bboxes[:self.max_word_num]
