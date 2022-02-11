@@ -389,8 +389,8 @@ class PAN_PP_Joint_Train(data.Dataset):
         synth = False
         ic17 = False
         coco = False
-        ic15 = True
-        tt = False
+        ic15 = False
+        tt = True
 
         # synth
         if synth:
@@ -537,8 +537,8 @@ class PAN_PP_Joint_Train(data.Dataset):
         #     index = random.randint(0, len(self.img_paths['tt']) - 1)
         #     img, bboxes, words = self.load_tt_single(index)
 
-        index = random.randint(0, len(self.img_paths['ic15']) - 1)
-        img, bboxes, words = self.load_ic15_single(index)
+        index = random.randint(0, len(self.img_paths['tt']) - 1)
+        img, bboxes, words = self.load_tt_single(index)
 
 
         if len(bboxes) > self.max_word_num:

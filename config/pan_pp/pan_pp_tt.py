@@ -3,19 +3,22 @@ model = dict(
     type='PAN_PP_V2',
     backbone=dict(
         type='resnet18',
+        # type='resnet50',
+        # type='resnet101',
         # type='efficentnet_b7',
         pretrained=True
     ),
     neck=dict(
         # type='FPEM_v2',
-        type='FPN_v2_1',
+        type='FPN_v2_2',
         in_channels=(64, 128, 256, 512), # resnet18
-        # in_channels=(256, 512, 1024, 2048), # resnet50
+        # in_channels=(256, 512, 1024, 2048), # resnet50 & resnet101
         # in_channels=(48, 80, 224, 640), # efficientNet_b7
         out_channels=128
     ),
     detection_head=dict(
-        type='PAN_PP_DetHead',
+        # type='PAN_PP_DetHead',
+        type='PAN_PP_DetHead_v2',
         in_channels=512,
         hidden_dim=128,
         num_classes=6,
@@ -36,7 +39,7 @@ model = dict(
     )
 )
 data = dict(
-    batch_size=10, # 16
+    batch_size=12, # 16
     num_workers=8, # 8
     train=dict(
         type='PAN_PP_TT',
