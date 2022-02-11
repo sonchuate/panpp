@@ -4,6 +4,7 @@ import string
 import cv2
 import mmcv
 import numpy as np
+from shapely.geometry import Polygon
 import Polygon as plg
 import pyclipper
 import scipy.io as scio
@@ -401,6 +402,13 @@ class PAN_PP_TT(data.Dataset):
                 if words[i] == '###':
                     cv2.drawContours(training_mask, [bboxes[i]], -1, 0, -1)
 
+        # border map
+
+        make_border_map = MakeBorderMap()
+        thresh_map, thresh_mask = make_border_map(img, bboxes)
+
+
+        # shrink
         gt_kernels = []
         for rate in [self.kernel_scale]:
             gt_kernel = np.zeros(img.shape[0:2], dtype='uint8')
@@ -411,15 +419,20 @@ class PAN_PP_TT(data.Dataset):
 
         if self.is_transform:
             imgs = [img, gt_instance, training_mask]
+
+            imgs.append(thresh_map)
+            imgs.append(thresh_mask)
+
             imgs.extend(gt_kernels)
+
 
             if not self.with_rec:
                 imgs = random_horizontal_flip(imgs)
             imgs = random_rotate(imgs)
             gt_instance_before_crop = imgs[1].copy()
             imgs = random_crop_padding(imgs, self.img_size)
-            img, gt_instance, training_mask, gt_kernels = imgs[0], imgs[
-                1], imgs[2], imgs[3:]
+            img, gt_instance, training_mask, thresh_map, thresh_mask, gt_kernels = imgs[0], imgs[
+                1], imgs[2], imgs[3], imgs[4], imgs[5:]
             word_mask = update_word_mask(gt_instance, gt_instance_before_crop,
                                          word_mask)
 
@@ -450,6 +463,13 @@ class PAN_PP_TT(data.Dataset):
         img = transforms.ToTensor()(img)
         img = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                    std=[0.229, 0.224, 0.225])(img)
+
+        # cv2.imwrite('1_image.jpg', self.denormalize(img))
+        # cv2.imwrite('4_thresh_map.jpg', self.denormalize(thresh_map))
+        # cv2.imwrite('5_thresh_mask.jpg', self.denormalize(thresh_mask))
+
+
+
         gt_text = torch.from_numpy(gt_text).long()
         gt_kernels = torch.from_numpy(gt_kernels).long()
         training_mask = torch.from_numpy(training_mask).long()
@@ -458,6 +478,9 @@ class PAN_PP_TT(data.Dataset):
         gt_words = torch.from_numpy(gt_words).long()
         word_mask = torch.from_numpy(word_mask).long()
 
+        thresh_map = torch.from_numpy(thresh_map).long()
+        thresh_mask = torch.from_numpy(thresh_mask).long()
+
         data = dict(
             imgs=img,
             gt_texts=gt_text,
@@ -465,6 +488,8 @@ class PAN_PP_TT(data.Dataset):
             training_masks=training_mask,
             gt_instances=gt_instance,
             gt_bboxes=gt_bboxes,
+            thresh_map=thresh_map,
+            thresh_mask=thresh_mask,
         )
         if self.with_rec:
             data.update(dict(gt_words=gt_words, word_masks=word_mask))
@@ -495,3 +520,130 @@ class PAN_PP_TT(data.Dataset):
             return self.prepare_train_data(index)
         elif self.split == 'test':
             return self.prepare_test_data(index)
+
+    def denormalize(self, image):
+        RGB_MEAN = np.array([122.67891434, 116.66876762, 104.00698793])
+
+        if len(image.shape) == 3:
+            image = image.permute(1, 2, 0).to('cpu').numpy()
+            image = image * 255.
+            image += RGB_MEAN
+            
+        else:
+            image = image.reshape((image.shape[0], image.shape[1], 1))
+            image = image * 255.
+
+        image = image.astype(np.uint8)
+
+        return image
+
+
+class MakeBorderMap():
+
+
+    def __init__(self):
+        self.shrink_ratio = 0.4
+        self.thresh_min = 0.3
+        self.thresh_max = 0.7
+
+
+    def __call__(self, image, polygons):
+
+        canvas = np.zeros(image.shape[:2], dtype=np.float32)
+        mask = np.zeros(image.shape[:2], dtype=np.float32)
+
+        for i in range(len(polygons)):
+            if polygons[i].shape[0] == 1:
+                continue
+            self.draw_border_map(polygons[i], canvas, mask=mask)
+        canvas = canvas * (self.thresh_max - self.thresh_min) + self.thresh_min
+        # data['thresh_map'] = canvas
+        # data['thresh_mask'] = mask
+        return canvas, mask
+
+    def draw_border_map(self, polygon, canvas, mask):
+        polygon = np.array(polygon)
+        assert polygon.ndim == 2
+        assert polygon.shape[1] == 2
+
+        polygon_shape = Polygon(polygon)
+        distance = polygon_shape.area * \
+            (1 - np.power(self.shrink_ratio, 2)) / polygon_shape.length
+        subject = [tuple(l) for l in polygon]
+        padding = pyclipper.PyclipperOffset()
+        padding.AddPath(subject, pyclipper.JT_ROUND,
+                        pyclipper.ET_CLOSEDPOLYGON)
+        padded_polygon = np.array(padding.Execute(distance)[0])
+        cv2.fillPoly(mask, [padded_polygon.astype(np.int32)], 1.0)
+
+        xmin = padded_polygon[:, 0].min()
+        xmax = padded_polygon[:, 0].max()
+        ymin = padded_polygon[:, 1].min()
+        ymax = padded_polygon[:, 1].max()
+        width = xmax - xmin + 1
+        height = ymax - ymin + 1
+
+        polygon[:, 0] = polygon[:, 0] - xmin
+        polygon[:, 1] = polygon[:, 1] - ymin
+
+        xs = np.broadcast_to(
+            np.linspace(0, width - 1, num=width).reshape(1, width), (height, width))
+        ys = np.broadcast_to(
+            np.linspace(0, height - 1, num=height).reshape(height, 1), (height, width))
+
+        distance_map = np.zeros(
+            (polygon.shape[0], height, width), dtype=np.float32)
+        for i in range(polygon.shape[0]):
+            j = (i + 1) % polygon.shape[0]
+            absolute_distance = self.distance(xs, ys, polygon[i], polygon[j])
+            distance_map[i] = np.clip(absolute_distance / distance, 0, 1)
+        distance_map = distance_map.min(axis=0)
+
+        xmin_valid = min(max(0, xmin), canvas.shape[1] - 1)
+        xmax_valid = min(max(0, xmax), canvas.shape[1] - 1)
+        ymin_valid = min(max(0, ymin), canvas.shape[0] - 1)
+        ymax_valid = min(max(0, ymax), canvas.shape[0] - 1)
+        canvas[ymin_valid:ymax_valid + 1, xmin_valid:xmax_valid + 1] = np.fmax(
+            1 - distance_map[
+                ymin_valid-ymin:ymax_valid-ymax+height,
+                xmin_valid-xmin:xmax_valid-xmax+width],
+            canvas[ymin_valid:ymax_valid + 1, xmin_valid:xmax_valid + 1])
+
+    def distance(self, xs, ys, point_1, point_2):
+        '''
+        compute the distance from point to a line
+        ys: coordinates in the first axis
+        xs: coordinates in the second axis
+        point_1, point_2: (x, y), the end of the line
+        '''
+        height, width = xs.shape[:2]
+        square_distance_1 = np.square(
+            xs - point_1[0]) + np.square(ys - point_1[1])
+        square_distance_2 = np.square(
+            xs - point_2[0]) + np.square(ys - point_2[1])
+        square_distance = np.square(
+            point_1[0] - point_2[0]) + np.square(point_1[1] - point_2[1])
+
+        np.seterr(invalid='ignore')
+        cosin = (square_distance - square_distance_1 - square_distance_2) / \
+            (2 * np.sqrt(square_distance_1 * square_distance_2))
+        square_sin = 1 - np.square(cosin)
+        square_sin = np.nan_to_num(square_sin)
+        result = np.sqrt(square_distance_1 * square_distance_2 *
+                         square_sin / square_distance)
+
+        result[cosin < 0] = np.sqrt(np.fmin(
+            square_distance_1, square_distance_2))[cosin < 0]
+        # self.extend_line(point_1, point_2, result)
+        return result
+
+    def extend_line(self, point_1, point_2, result):
+        ex_point_1 = (int(round(point_1[0] + (point_1[0] - point_2[0]) * (1 + self.shrink_ratio))),
+                      int(round(point_1[1] + (point_1[1] - point_2[1]) * (1 + self.shrink_ratio))))
+        cv2.line(result, tuple(ex_point_1), tuple(point_1),
+                 4096.0, 1, lineType=cv2.LINE_AA, shift=0)
+        ex_point_2 = (int(round(point_2[0] + (point_2[0] - point_1[0]) * (1 + self.shrink_ratio))),
+                      int(round(point_2[1] + (point_2[1] - point_1[1]) * (1 + self.shrink_ratio))))
+        cv2.line(result, tuple(ex_point_2), tuple(point_2),
+                 4096.0, 1, lineType=cv2.LINE_AA, shift=0)
+        return ex_point_1, ex_point_2

@@ -108,8 +108,8 @@ class PAN_PP(nn.Module):
                 else:
                     x_crops, gt_words = self.rec_head.extract_feature(
                         f, (imgs.size(2), imgs.size(3)),
-                        gt_instances * training_masks, gt_bboxes, gt_words,
-                        word_masks)
+                        gt_instances * training_masks, 
+                        gt_bboxes, gt_words, word_masks)
 
                 if x_crops is not None:
                     out_rec = self.rec_head(x_crops, gt_words)

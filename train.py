@@ -33,6 +33,8 @@ def train(train_loader, model, optimizer, epoch, start_iter, cfg):
     losses_emb = AverageMeter()
     losses_rec = AverageMeter()
 
+    losses_thresh = AverageMeter()
+
     ious_text = AverageMeter()
     ious_kernel = AverageMeter()
     accs_rec = AverageMeter()
@@ -73,6 +75,12 @@ def train(train_loader, model, optimizer, epoch, start_iter, cfg):
         else:
             loss = loss_text + loss_kernels
 
+        if 'loss_thresh' in outputs:
+            loss_thresh = torch.mean(outputs['loss_thresh'])
+            losses_thresh.update(loss_thresh.item())
+            loss += loss_thresh
+
+
         iou_text = torch.mean(outputs['iou_text'])
         ious_text.update(iou_text.item())
         iou_kernel = torch.mean(outputs['iou_kernel'])
@@ -105,7 +113,8 @@ def train(train_loader, model, optimizer, epoch, start_iter, cfg):
 
         # print log
         if iter % 20 == 0:
-            length = len(train_loader)
+            length = len(train_loader) 
+            # f'Loss(thresh): {losses_thresh.avg:.3f} | ' \
             log = f'({iter + 1}/{length}) ' \
                   f'LR: {optimizer.param_groups[0]["lr"]:.6f} | ' \
                   f'Batch: {batch_time.avg:.3f}s | ' \
@@ -166,6 +175,10 @@ def main(args):
     if not osp.isdir(checkpoint_path):
         os.makedirs(checkpoint_path)
     print('Checkpoint path: %s.' % checkpoint_path)
+    with open(checkpoint_path + '/cjg.json', 'w') as f:
+        json.dump(cfg._cfg_dict, f, indent=4)
+
+
     sys.stdout.flush()
 
     # data loader
@@ -213,10 +226,12 @@ def main(args):
         assert osp.isfile(args.resume), 'Error: no checkpoint directory found!'
         print('Resuming from checkpoint %s.' % args.resume)
         checkpoint = torch.load(args.resume)
-        start_epoch = checkpoint['epoch']
-        start_iter = checkpoint['iter']
+        start_epoch = checkpoint['epoch'] if 'epoch' in checkpoint else start_epoch
+        start_iter = checkpoint['iter'] if 'iter' in checkpoint else start_iter
         model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+
+        if 'optimizer' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer'])
 
     for epoch in range(start_epoch, cfg.train_cfg.epoch):
         print('\nEpoch: [%d | %d]' % (epoch + 1, cfg.train_cfg.epoch))

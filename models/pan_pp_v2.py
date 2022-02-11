@@ -41,6 +41,8 @@ class PAN_PP_V2(nn.Module):
                 training_masks=None,
                 gt_instances=None,
                 gt_bboxes=None,
+                thresh_map=None,
+                thresh_mask=None,
                 gt_words=None,
                 word_masks=None,
                 img_metas=None,
@@ -86,6 +88,7 @@ class PAN_PP_V2(nn.Module):
             start = time.time()
 
         # detection
+        # det_out, thresh = self.det_head(f)
         det_out = self.det_head(f)
 
         if not self.training and cfg.report_speed:
@@ -97,7 +100,7 @@ class PAN_PP_V2(nn.Module):
             det_out = self._upsample(det_out, imgs.size())
             loss_det = self.det_head.loss(det_out, gt_texts, gt_kernels,
                                           training_masks, gt_instances,
-                                          gt_bboxes)
+                                          gt_bboxes, thresh_map, thresh_mask) #thresh
             outputs.update(loss_det)
         else:
             det_out = self._upsample(det_out, imgs.size(), cfg.test_cfg.scale)
