@@ -4,10 +4,18 @@ from natsort import natsorted
 
 def eval_tt():
 
-    model_root = '/root/Storage/panpp/checkpoints/pan_pp_tt/'
+    config = 'pan_pp_tt.py'
+    checkpoints = 'pan_pp_tt'
+
+
+    model_root = '/root/Storage/panpp/checkpoints/'+ checkpoints +'/'
     print(model_root)
     model_list = natsorted(os.listdir(model_root), reverse=True)
-    model_list.remove('checkpoint.pth.tar')
+    
+    if 'checkpoint.pth.tar' in model_list:
+        model_list.remove('checkpoint.pth.tar')
+    if 'cjg.json' in model_list:
+        model_list.remove('cjg.json')
 
     try:
         for model in model_list:
@@ -16,7 +24,7 @@ def eval_tt():
             os.chdir('/root/Storage/panpp')
 
             subprocess.call([
-                '/root/anaconda3/envs/pan/bin/python', 'test.py', 'config/pan_pp/pan_pp_tt.py',
+                '/root/anaconda3/envs/pan/bin/python', 'test.py', 'config/pan_pp/' + config,
                 model_root + model
             ])
 
