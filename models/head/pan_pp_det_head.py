@@ -8,7 +8,6 @@ import torch.nn as nn
 
 from ..loss import build_loss, iou, ohem_batch
 from ..post_processing import pa
-from ..post_processing import n_pa
 from ..utils import CoordConv2d
 
 
@@ -121,8 +120,8 @@ class PAN_PP_DetHead(nn.Module):
                 continue
 
             if with_rec:
-                tl = np.min(points, axis=0) # top left
-                br = np.max(points, axis=0) + 1 # bottom right
+                tl = np.min(points, axis=0)
+                br = np.max(points, axis=0) + 1
                 bboxes_h[0, i] = (tl[0], tl[1], br[0], br[1])
                 instances[0].append(i)
 
