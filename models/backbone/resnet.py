@@ -134,6 +134,45 @@ class Convkxk(nn.Module):
         return self.relu(self.bn(self.conv(x)))
 
 
+class Res_layer(nn.Module):
+    def __init__(self, block, planes, blocks, inplanes, stride=1):
+        super(Res_layer, self).__init__()
+
+        self.inplanes = inplanes
+
+        downsample = None
+        if stride != 1 or self.inplanes != planes * block.expansion:
+            downsample = nn.Sequential(
+                nn.Conv2d(self.inplanes,
+                          planes * block.expansion,
+                          kernel_size=1,
+                          stride=stride,
+                          bias=False),
+                nn.BatchNorm2d(planes * block.expansion),
+            )
+
+        self.layers = []
+        self.layers.append(block(self.inplanes, planes, stride, downsample))
+        self.inplanes = planes * block.expansion
+        for i in range(1, blocks):
+            self.layers.append(block(self.inplanes, planes))
+
+        self.layers = nn.ModuleList(self.layers)
+
+
+    def forward(self, x):
+
+        f_s = []
+        for layer in self.layers:
+            x = layer(x)    
+            f_s.append(x)
+
+        result = f_s[0]
+        for i in range(1, len(f_s)):
+            result += f_s[i]
+
+        return result
+
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         super(ResNet, self).__init__()
@@ -153,6 +192,12 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+
+        # self.layer1 = Res_layer(block, 64, layers[0], inplanes=128)
+        # self.layer2 = Res_layer(block, 128, layers[1], stride=2, inplanes=64)
+        # self.layer3 = Res_layer(block, 256, layers[2], stride=2, inplanes=128)
+        # self.layer4 = Res_layer(block, 512, layers[3], stride=2, inplanes=256)
+        
         # self.avgpool = nn.AvgPool2d(7, stride=1)
         # self.fc = nn.Linear(512 * block.expansion, num_classes)
 
