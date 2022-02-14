@@ -10,7 +10,7 @@ model = dict(
     ),
     neck=dict(
         # type='FPEM_v2',
-        type='FPN_v2_2',
+        type='FPN_v2_1',
         in_channels=(64, 128, 256, 512), # resnet18
         # in_channels=(256, 512, 1024, 2048), # resnet50 & resnet101
         # in_channels=(48, 80, 224, 640), # efficientNet_b7

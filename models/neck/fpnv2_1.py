@@ -1,8 +1,37 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
+# from ..utils import Conv_BN_ReLU
 
-from ..utils import Conv_BN_ReLU
+class Conv_BN_ReLU(nn.Module):
+    def __init__(self,
+                 in_planes,
+                 out_planes,
+                 kernel_size=1,
+                 stride=1,
+                 padding=0):
+        super(Conv_BN_ReLU, self).__init__()
+        self.conv = nn.Conv2d(in_planes,
+                              out_planes,
+                              kernel_size=kernel_size,
+                              stride=stride,
+                              padding=padding,
+                              bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+        self.relu = nn.ReLU(inplace=True)
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
+
 
 def _middle_cat(u, d, m=None):
 
@@ -101,7 +130,7 @@ class FPN_v2_1(nn.Module):
         self.E2 = Conv_block(in_channels=planes*2, out_channels=planes, stride=1)
         self.E3 = Conv_block(in_channels=planes*2, out_channels=planes, stride=1)
 
-        self.R = 2
+        self.R = 1
         self.fpn_layers = []
         for i in range(0, self.R):
             self.fpn_layers.append(repeat_block(out_channels=planes))
@@ -112,14 +141,17 @@ class FPN_v2_1(nn.Module):
 
     def forward(self, f1, f2, f3, f4):
 
+        # expand layer
         E1 = self.E1(_middle_cat(f1,f2))
         E2 = self.E2(_middle_cat(f2,f3))
         E3 = self.E3(_middle_cat(f3,f4))
 
         features = f1, E1, f2, E2, f3, E3, f4
 
+        # repeat fpn block
         features = self.fpn(features)
 
+        # conv 1x1
         for f in features:
             f = self.last_conv(f)
 
