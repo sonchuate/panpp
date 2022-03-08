@@ -12,10 +12,11 @@ def eval_tt():
     print(model_root)
     model_list = natsorted(os.listdir(model_root), reverse=True)
     
-    if 'checkpoint.pth.tar' in model_list:
-        model_list.remove('checkpoint.pth.tar')
     if 'cjg.json' in model_list:
         model_list.remove('cjg.json')
+    if 'checkpoint.pth.tar' in model_list and len(model_list) != 1:
+        model_list.remove('checkpoint.pth.tar')
+
 
     try:
         for model in model_list:
