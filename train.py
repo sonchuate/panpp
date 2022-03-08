@@ -5,6 +5,7 @@ import os.path as osp
 import random
 import sys
 import time
+import datetime
 
 import numpy as np
 import torch
@@ -18,6 +19,18 @@ torch.manual_seed(123456)
 torch.cuda.manual_seed(123456)
 np.random.seed(123456)
 random.seed(123456)
+
+
+def write_log(message):
+    with open('log.txt', 'a') as log_file:
+
+        current_time = datetime.datetime.now()
+        hours_added = datetime.timedelta(hours = 8)
+        current_time = str(current_time + hours_added).split('.')[0]
+
+        log_file.write(current_time + ' ' + message)
+        log_file.write('\n')
+        log_file.flush()
 
 
 def train(train_loader, model, optimizer, epoch, start_iter, cfg):
@@ -130,6 +143,8 @@ def train(train_loader, model, optimizer, epoch, start_iter, cfg):
             print(log)
             sys.stdout.flush()
 
+            write_log(log)
+
 
 def adjust_learning_rate(optimizer, dataloader, epoch, iter, cfg):
     schedule = cfg.train_cfg.schedule
@@ -235,6 +250,7 @@ def main(args):
 
     for epoch in range(start_epoch, cfg.train_cfg.epoch):
         print('\nEpoch: [%d | %d]' % (epoch + 1, cfg.train_cfg.epoch))
+        write_log('\nEpoch: [%d | %d]' % (epoch + 1, cfg.train_cfg.epoch))
 
         train(train_loader, model, optimizer, epoch, start_iter, cfg)
 
