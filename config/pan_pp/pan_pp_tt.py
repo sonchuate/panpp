@@ -3,6 +3,7 @@ model = dict(
     type='PAN_PP_V2',
     backbone=dict(
         type='resnet18',
+        # type='resnet18_csp',
         # type='resnet50',
         # type='resnet101',
         # type='efficentnet_b7',
