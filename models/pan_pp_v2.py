@@ -9,6 +9,8 @@ from .head import build_head
 from .neck import build_neck
 from .utils import Conv_BN_ReLU
 
+import numpy as np
+
 
 class PAN_PP_V2(nn.Module):
     def __init__(self, backbone, neck, detection_head, recognition_head=None):
@@ -28,7 +30,8 @@ class PAN_PP_V2(nn.Module):
         if recognition_head:
             self.rec_head = build_head(recognition_head)
 
-        self.conv1x1 = nn.Conv2d(128*7, 128*4, kernel_size=1, stride=1, padding=0, bias=False)
+        # self.conv1x1 = nn.Conv2d(128*7, 128*4, kernel_size=1, stride=1, padding=0, bias=False)
+        self.conv1x1 = Conv_BN_ReLU(128*7, 128*4)
 
     def _upsample(self, x, size, scale=1):
         _, _, H, W = size
