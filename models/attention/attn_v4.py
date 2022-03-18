@@ -63,7 +63,7 @@ class Channel_Attention(nn.Module):
         self.part1_chnls = int(inChannels * part_ratio)
 
 
-    def forward(self,q,k,v):
+    def forward_csp(self,q,k,v):
         """
             inputs:
                 x: input feature map [Batch, Channel, Height, Width]
@@ -105,7 +105,7 @@ class Channel_Attention(nn.Module):
         
         return out
 
-    def forward_ori(self,q,k,v):
+    def forward(self,q,k,v):
         """
             inputs:
                 x: input feature map [Batch, Channel, Height, Width]
