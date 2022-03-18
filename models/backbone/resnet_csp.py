@@ -1,14 +1,18 @@
 import math
 import os
 import sys
+import time
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 try:
     from urllib import urlretrieve
 except ImportError:
     from urllib.request import urlretrieve
+
+from ..utils import Conv_BN_ReLU
 
 __all__ = ['resnet18', 'resnet50', 'resnet101']
 
@@ -167,8 +171,8 @@ class Res_layer(nn.Module):
             x = layer(x)    
             f_s.append(x)
 
-        result = 0.
-        for i in range(0, len(f_s)):
+        result = f_s[0]
+        for i in range(1, len(f_s)):
             result += f_s[i]
 
         return result
@@ -192,6 +196,12 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
+
+        self.c1 = Conv_BN_ReLU(3, 32)
+        self.c2 = Conv_BN_ReLU(3, 64)
+        self.c3 = Conv_BN_ReLU(3, 128)
+        self.c4 = Conv_BN_ReLU(3, 256)
+
 
         # self.layer1 = Res_layer(block, 64, layers[0], inplanes=128)
         # self.layer2 = Res_layer(block, 128, layers[1], stride=2, inplanes=64)
@@ -230,20 +240,29 @@ class ResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
+
+        ori = x
+
         x = self.relu1(self.bn1(self.conv1(x)))
         x = self.relu2(self.bn2(self.conv2(x)))
         x = self.relu3(self.bn3(self.conv3(x)))
         x = self.maxpool(x)
 
         f = []
-        x = self.layer1(x)
-        f.append(x)
-        x = self.layer2(x)
-        f.append(x)
-        x = self.layer3(x)
-        f.append(x)
-        x = self.layer4(x)
-        f.append(x)
+        l1 = self.layer1(x)
+        l2 = self.layer2(l1)
+        l3 = self.layer3(l2)
+        l4 = self.layer4(l3)
+
+        c1 = self.c1(F.adaptive_avg_pool2d(ori, (l1.shape[2], l1.shape[3])))
+        c2 = self.c2(F.adaptive_avg_pool2d(ori, (l2.shape[2], l2.shape[3])))
+        c3 = self.c3(F.adaptive_avg_pool2d(ori, (l3.shape[2], l3.shape[3])))
+        c4 = self.c4(F.adaptive_avg_pool2d(ori, (l4.shape[2], l4.shape[3])))
+
+        f.append(torch.cat((l1, c1), 1))
+        f.append(torch.cat((l2, c2), 1))
+        f.append(torch.cat((l3, c3), 1))
+        f.append(torch.cat((l4, c4), 1))
 
         return tuple(f)
 
@@ -253,8 +272,107 @@ class ResNet(nn.Module):
 
         # return x
 
+def reduce_channel(op):
 
-def resnet18(pretrained=False, **kwargs):
+    if type(op).__name__ == 'Conv2d':
+
+        ori_weight = op.weight.clone()
+
+        w_s = ori_weight.view(-1, op.kernel_size[0] * op.kernel_size[1])
+        w_s = sorted(w_s, key=sum, reverse=True)
+        w_s = torch.FloatTensor([item.detach().numpy() for item in w_s])
+        w_s = w_s.view(op.out_channels, op.in_channels, op.kernel_size[0], op.kernel_size[1])
+
+        if op.in_channels != 3:
+            op.in_channels //= 2
+        op.out_channels //= 2
+
+        op.weight.data = w_s[:op.out_channels, :op.in_channels]
+
+    if type(op).__name__ == 'BatchNorm2d':
+
+        ori_weight = op.weight.clone()
+        ori_bias = op.bias.clone()
+
+        w_s, w_index = torch.sort(ori_weight, dim=0, descending=True)
+        b_s = ori_bias[w_index]
+
+        op.num_features //= 2
+
+        op.weight.data = w_s[:op.num_features]
+        op.bias.data = b_s[:op.num_features]
+        op.running_mean.data = w_s[:op.num_features]
+        op.running_var.data = b_s[:op.num_features]
+
+    return op
+
+def resnet18_to_csp(model):
+    start_time = time.time()
+    print("Creating CSP model...")
+
+    # stem
+    model.conv1 = reduce_channel(model.conv1)
+    model.bn1 = reduce_channel(model.bn1)
+    model.conv2 = reduce_channel(model.conv2)
+    model.bn2 = reduce_channel(model.bn2)
+    model.conv3 = reduce_channel(model.conv3)
+    model.bn3 = reduce_channel(model.bn3)
+
+    # layer 1
+    model.layer1[0].conv1 = reduce_channel(model.layer1[0].conv1)
+    model.layer1[0].bn1 = reduce_channel(model.layer1[0].bn1)
+    model.layer1[0].conv2 = reduce_channel(model.layer1[0].conv2)
+    model.layer1[0].bn2 = reduce_channel(model.layer1[0].bn2)
+    model.layer1[0].downsample[0] = reduce_channel(model.layer1[0].downsample[0])
+    model.layer1[0].downsample[1] = reduce_channel(model.layer1[0].downsample[1])
+
+    model.layer1[1].conv1 = reduce_channel(model.layer1[1].conv1)
+    model.layer1[1].bn1 = reduce_channel(model.layer1[1].bn1)
+    model.layer1[1].conv2 = reduce_channel(model.layer1[1].conv2)
+    model.layer1[1].bn2 = reduce_channel(model.layer1[1].bn2)
+    # layer 2
+    model.layer2[0].conv1 = reduce_channel(model.layer2[0].conv1)
+    model.layer2[0].bn1 = reduce_channel(model.layer2[0].bn1)
+    model.layer2[0].conv2 = reduce_channel(model.layer2[0].conv2)
+    model.layer2[0].bn2 = reduce_channel(model.layer2[0].bn2)
+    model.layer2[0].downsample[0] = reduce_channel(model.layer2[0].downsample[0])
+    model.layer2[0].downsample[1] = reduce_channel(model.layer2[0].downsample[1])
+
+    model.layer2[1].conv1 = reduce_channel(model.layer2[1].conv1)
+    model.layer2[1].bn1 = reduce_channel(model.layer2[1].bn1)
+    model.layer2[1].conv2 = reduce_channel(model.layer2[1].conv2)
+    model.layer2[1].bn2 = reduce_channel(model.layer2[1].bn2)
+    # layer 3
+    model.layer3[0].conv1 = reduce_channel(model.layer3[0].conv1)
+    model.layer3[0].bn1 = reduce_channel(model.layer3[0].bn1)
+    model.layer3[0].conv2 = reduce_channel(model.layer3[0].conv2)
+    model.layer3[0].bn2 = reduce_channel(model.layer3[0].bn2)
+    model.layer3[0].downsample[0] = reduce_channel(model.layer3[0].downsample[0])
+    model.layer3[0].downsample[1] = reduce_channel(model.layer3[0].downsample[1])
+
+    model.layer3[1].conv1 = reduce_channel(model.layer3[1].conv1)
+    model.layer3[1].bn1 = reduce_channel(model.layer3[1].bn1)
+    model.layer3[1].conv2 = reduce_channel(model.layer3[1].conv2)
+    model.layer3[1].bn2 = reduce_channel(model.layer3[1].bn2)
+    # layer 4
+    model.layer4[0].conv1 = reduce_channel(model.layer4[0].conv1)
+    model.layer4[0].bn1 = reduce_channel(model.layer4[0].bn1)
+    model.layer4[0].conv2 = reduce_channel(model.layer4[0].conv2)
+    model.layer4[0].bn2 = reduce_channel(model.layer4[0].bn2)
+    model.layer4[0].downsample[0] = reduce_channel(model.layer4[0].downsample[0])
+    model.layer4[0].downsample[1] = reduce_channel(model.layer4[0].downsample[1])
+
+    model.layer4[1].conv1 = reduce_channel(model.layer4[1].conv1)
+    model.layer4[1].bn1 = reduce_channel(model.layer4[1].bn1)
+    model.layer4[1].conv2 = reduce_channel(model.layer4[1].conv2)
+    model.layer4[1].bn2 = reduce_channel(model.layer4[1].bn2)
+
+    print('Finished. Cost time: ' + str(time.time() - start_time))
+
+    return model
+
+
+def resnet18_csp(pretrained=False, **kwargs):
     """Constructs a ResNet-18 model.
 
     Args:
@@ -263,31 +381,32 @@ def resnet18(pretrained=False, **kwargs):
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model.load_state_dict(load_url(model_urls['resnet18']), strict=False)
+    model = resnet18_to_csp(model)
     return model
 
 
-def resnet50(pretrained=False, **kwargs):
-    """Constructs a ResNet-50 model.
+# def resnet50(pretrained=False, **kwargs):
+#     """Constructs a ResNet-50 model.
 
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on Places
-    """
-    model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
-    if pretrained:
-        model.load_state_dict(load_url(model_urls['resnet50']), strict=False)
-    return model
+#     Args:
+#         pretrained (bool): If True, returns a model pre-trained on Places
+#     """
+#     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
+#     if pretrained:
+#         model.load_state_dict(load_url(model_urls['resnet50']), strict=False)
+#     return model
 
 
-def resnet101(pretrained=False, **kwargs):
-    """Constructs a ResNet-101 model.
+# def resnet101(pretrained=False, **kwargs):
+#     """Constructs a ResNet-101 model.
 
-    Args:
-        pretrained (bool): If True, returns a model pre-trained on Places
-    """
-    model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
-    if pretrained:
-        model.load_state_dict(load_url(model_urls['resnet101']), strict=False)
-    return model
+#     Args:
+#         pretrained (bool): If True, returns a model pre-trained on Places
+#     """
+#     model = ResNet(Bottleneck, [3, 4, 23, 3], **kwargs)
+#     if pretrained:
+#         model.load_state_dict(load_url(model_urls['resnet101']), strict=False)
+#     return model
 
 
 def load_url(url, model_dir='./pretrained', map_location=None):
