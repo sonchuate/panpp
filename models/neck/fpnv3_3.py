@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from ..attention import attn_v4 as attn
+from ..attention import attn_v5 as attn
 
 # from ..utils import Conv_BN_ReLU
 
@@ -179,8 +179,10 @@ class FPN_v3_3(nn.Module):
         features = self.fpn(features)
 
         # conv 1x1
+        last_features = []
         for f in features:
-            f = self.last_conv(f)
+            last_features.append(self.last_conv(f))
+        features = last_features
 
         F1, M1, F2, M2, F3, M3, F4 = features
 

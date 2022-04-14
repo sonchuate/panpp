@@ -57,6 +57,7 @@ class PAN_PP_V2(nn.Module):
             start = time.time()
 
         # backbone
+        # print(self.backbone)
         f = self.backbone(imgs)
 
         if not self.training and cfg.report_speed:
