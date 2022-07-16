@@ -1,16 +1,20 @@
 model = dict(
-    type='PAN_PP',
+    # type='PAN_PP',
+    type='PAN_PP_V2',
     backbone=dict(
-        type='resnet18',
+        # type='resnet18',
+        type='resnet18_csp',
         pretrained=True
     ),
     neck=dict(
-        type='FPEM_v2',
+        # type='FPEM_v2',
+        type='FPN_v3_3',
         in_channels=(64, 128, 256, 512),
         out_channels=128
     ),
     detection_head=dict(
-        type='PAN_PP_DetHead',
+        # type='PAN_PP_DetHead',
+        type='PAN_PP_DetHead_v2',
         in_channels=512,
         hidden_dim=128,
         num_classes=6,
@@ -27,28 +31,26 @@ model = dict(
             feature_dim=4,
             loss_weight=0.25
         ),
-        use_coordconv=False,
+        use_coordconv=False
     )
 )
 data = dict(
-    batch_size=16, # 16
-    num_workers=8, # 8
+    batch_size=8,
+    num_workers=8,
     train=dict(
-        type='PAN_PP_IC15',
+        type='PAN_PP_CTW',
         split='train',
         is_transform=True,
-        img_size=736,
-        short_size=736,
-        kernel_scale=0.5,
+        img_size=640,
+        short_size=640,
+        kernel_scale=0.5, #0.7
         read_type='pil',
-        with_rec=True
     ),
     test=dict(
-        type='PAN_PP_IC15',
+        type='PAN_PP_CTW',
         split='test',
-        short_size=720,
+        short_size=640,
         read_type='pil',
-        with_rec=True
     )
 )
 train_cfg = dict(
@@ -57,12 +59,13 @@ train_cfg = dict(
     epoch=600,
     optimizer='Adam',
     use_ex=False,
+    pretrain='checkpoints/pan_pp_synth_exp99/checkpoint.pth.tar'
 )
 test_cfg = dict(
-    min_score=0.85,
+    min_score=0.90, # 0.88
     min_area=260,
-    min_kernel_area=2.6,
+    min_kernel_area=2.6, # 2.6
     scale=4,
-    bbox_type='rect',
-    result_path='outputs/submit_ic15.zip',
+    bbox_type='poly',
+    result_path='outputs/submit_ctw/'
 )

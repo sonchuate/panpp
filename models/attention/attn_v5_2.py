@@ -2,10 +2,57 @@ from re import X
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 import math
 
-from ..utils import Conv_BN_ReLU
+
+# from ..utils import Conv_BN_ReLU
+
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        return F.relu6(x + 3., inplace=self.inplace) / 6.
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        out = F.relu6(x + 3., self.inplace) / 6.
+        return out * x
+
+
+class Conv_BN_ReLU(nn.Module):
+    def __init__(self,
+                 in_planes,
+                 out_planes,
+                 kernel_size=1,
+                 stride=1,
+                 padding=0):
+        super(Conv_BN_ReLU, self).__init__()
+        self.conv = nn.Conv2d(in_planes,
+                              out_planes,
+                              kernel_size=kernel_size,
+                              stride=stride,
+                              padding=padding,
+                              bias=False)
+        self.bn = nn.BatchNorm2d(out_planes)
+        self.relu = nn.ReLU(inplace=True)
+        # self.relu = h_swish()
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+    def forward(self, x):
+        return self.relu(self.bn(self.conv(x)))
 
 
 class ChannelAttention(nn.Module):
@@ -60,12 +107,10 @@ class Channel_Attention(nn.Module):
 
 
         self.softmax  = nn.Softmax(dim=1)
-        self.sigmoid = nn.Sigmoid()
+        # self.sigmoid = nn.Sigmoid()
+        self.sigmoid = h_sigmoid()
 
         self.part1_chnls = int(inChannels * part_ratio)
-
-        # self.pos_encoder = PositionalEncoding(inChannels)
-
 
     def forward(self,q,k,v):
         """
@@ -83,11 +128,6 @@ class Channel_Attention(nn.Module):
         f_x = self.key(k).view(batchsize,   -1, C)      # Keys                  [B, C_bar, N]
         g_x = self.query(q).view(batchsize, -1, C)      # Queries               [B, C_bar, N]
         h_x = v.view(batchsize, -1, C)                      # Values                [B, C_bar, N]
-        
-        
-        # f_x = self.pos_encoder(f_x) # postion embedding
-        # g_x = self.pos_encoder(g_x) # postion embedding
-
 
         s =  torch.bmm(f_x.permute(0,2,1), g_x)         # Scores                [B, N, N]
         beta = self.softmax(s)                          # Attention Map         [B, N, N]
@@ -103,10 +143,10 @@ class Channel_Attention(nn.Module):
         return y
 
 ### original
-class attn_v5(nn.Module):
+class attn_v5_2(nn.Module):
 
     def __init__(self, planes):
-        super(attn_v5, self).__init__()
+        super(attn_v5_2, self).__init__()
 
         k = 4
 
@@ -129,23 +169,3 @@ class attn_v5(nn.Module):
         out = self.attn(q, k, v)
 
         return out
-
-class PositionalEncoding(nn.Module):
-
-    def __init__(self, d_model: int,max_len: int = 5000):
-        super().__init__()
-
-        position = torch.arange(max_len).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(max_len, 1, d_model)
-        pe[:, 0, 0::2] = torch.sin(position * div_term)
-        pe[:, 0, 1::2] = torch.cos(position * div_term)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        """
-        Args:
-            x: Tensor, shape [seq_len, batch_size, embedding_dim]
-        """
-        x = x + self.pe[:x.size(0)]
-        return x

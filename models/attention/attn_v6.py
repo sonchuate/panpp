@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import numpy as np
 import math
 
 from ..utils import Conv_BN_ReLU
@@ -53,19 +54,14 @@ class Channel_Attention(nn.Module):
         embedding_channels = inChannels // k  # C_bar
 
         pool_size = 1
-        part_ratio = 0.5 # keep ratio
 
         self.key = ChannelAttention(embedding_channels, pool_size=pool_size)
         self.query = ChannelAttention(embedding_channels, pool_size=pool_size)
 
-
         self.softmax  = nn.Softmax(dim=1)
         self.sigmoid = nn.Sigmoid()
 
-        self.part1_chnls = int(inChannels * part_ratio)
-
         # self.pos_encoder = PositionalEncoding(inChannels)
-
 
     def forward(self,q,k,v):
         """
@@ -76,18 +72,16 @@ class Channel_Attention(nn.Module):
                 attention: [Batch, Channel, Height, Width]
         """
 
-        ori = q + k + v
+        # ori = q + k + v
 
         batchsize, C, H, W = q.size()
 
         f_x = self.key(k).view(batchsize,   -1, C)      # Keys                  [B, C_bar, N]
         g_x = self.query(q).view(batchsize, -1, C)      # Queries               [B, C_bar, N]
         h_x = v.view(batchsize, -1, C)                      # Values                [B, C_bar, N]
-        
-        
+
         # f_x = self.pos_encoder(f_x) # postion embedding
         # g_x = self.pos_encoder(g_x) # postion embedding
-
 
         s =  torch.bmm(f_x.permute(0,2,1), g_x)         # Scores                [B, N, N]
         beta = self.softmax(s)                          # Attention Map         [B, N, N]
@@ -98,37 +92,76 @@ class Channel_Attention(nn.Module):
         
         o = self.sigmoid(o)
 
-        y = o * ori                     
+        # y = o * ori                     
         
-        return y
+        return o
 
-### original
-class attn_v5(nn.Module):
+
+class attn_v6(nn.Module):
 
     def __init__(self, planes):
-        super(attn_v5, self).__init__()
+        super(attn_v6, self).__init__()
 
         k = 4
 
-        self.t = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
-        self.b = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
-        self.m = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.t_1 = Channel_Attention(planes,k=k)
 
-        self.q = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0) 
-        self.k = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0) 
-        self.v = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0) 
+        self.b_1 = Channel_Attention(planes,k=k)
 
-        self.attn = Channel_Attention(planes,k=k)
+        self.m_1 = Channel_Attention(planes,k=k)
+
+        # Conv 1x1
+        self.t_q = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.t_k = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.t_v = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+
+        self.b_q = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.b_k = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.b_v = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+
+        self.m_q = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.m_k = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.m_v = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+
+        self.out_t = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.out_b = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+        self.out_m = Conv_BN_ReLU(planes,planes,1,stride=1,padding=0)
+
+        # self.out = Conv_BN_ReLU(planes * 3,planes,1,stride=1,padding=0)
 
     def forward(self, t, b, m):
 
-        mix_fusion = self.t(t) + self.b(b) + self.m(m)
+        t_q, t_k, t_v = self.t_q(t), self.t_k(t), self.t_v(t)
+        b_q, b_k, b_v = self.b_q(b), self.b_k(b), self.b_v(b)
+        m_q, m_k, m_v = self.m_q(m), self.m_k(m), self.m_v(m)
 
-        q, k, v = self.q(mix_fusion), self.k(mix_fusion), self.v(mix_fusion)
+        out_t = t * self.t_1(t_q, t_k, t_v)
+        out_b = b * self.b_1(b_q, b_k, b_v)
+        out_m = m * self.m_1(m_q, m_k, m_v)
 
-        out = self.attn(q, k, v)
+        out = self.out_t(out_t) + self.out_b(out_b) + self.out_m(out_m)
+
+        # out = torch.cat((self.out_t(out_t), self.out_b(out_b), self.out_m(out_m)), 1)
+
+        # out = self.out(out)
 
         return out
+
+    # def forward(self, t, b, m):
+
+    #     t_q, t_k, t_v = self.t_q(t), self.t_k(t), self.t_v(t)
+    #     b_q, b_k, b_v = self.b_q(b), self.b_k(b), self.b_v(b)
+    #     m_q, m_k, m_v = self.m_q(m), self.m_k(m), self.m_v(m)
+
+    #     out_t = self.t_1(t_q, t_k, t_v) + self.t_2(b_q, t_k, b_v) + self.t_3(m_q, t_k, m_v)
+    #     out_b = self.b_1(t_q, b_k, t_v) + self.b_2(b_q, b_k, b_v) + self.b_3(m_q, b_k, m_v)
+    #     out_m = self.m_1(t_q, m_k, t_v) + self.m_2(b_q, m_k, b_v) + self.m_3(m_q, m_k, m_v)
+
+    #     out = self.out_t(out_t) + self.out_b(out_b) + self.out_m(out_m)
+
+    #     return out
+
+
 
 class PositionalEncoding(nn.Module):
 

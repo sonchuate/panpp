@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from ..attention import attn_v5 as attn
+from ..attention import attn_v6 as attn
 
 # from ..utils import Conv_BN_ReLU
 

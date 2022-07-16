@@ -9,5 +9,10 @@ from .fpnv2_3 import FPN_v2_3
 from .fpnv3_1 import FPN_v3_1
 from .fpnv3_2 import FPN_v3_2
 from .fpnv3_3 import FPN_v3_3
+from .fpnv3_4 import FPN_v3_4
+from .fpnv3_3_2 import FPN_v3_3_2
 
-__all__ = ['FPN', 'FPEM_v1', 'FPEM_v2', 'build_neck', 'FPN_v2_1', 'FPN_v2_2', 'FPN_v2_3', 'FPN_v3_1', 'FPN_v3_2', 'FPN_v3_3']
+
+__all__ = ['FPN', 'FPEM_v1', 'FPEM_v2', 
+'build_neck', 'FPN_v2_1', 'FPN_v2_2', 
+'FPN_v2_3', 'FPN_v3_1', 'FPN_v3_2', 'FPN_v3_3', 'FPN_v3_4', 'FPN_v3_3_2']

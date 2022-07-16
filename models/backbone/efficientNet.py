@@ -160,12 +160,13 @@ class EfficientNet(nn.Module):
         >>> outputs = model(inputs)
     """
 
-    def __init__(self, blocks_args=None, global_params=None):
+    def __init__(self, model_name, blocks_args=None, global_params=None):
         super().__init__()
         assert isinstance(blocks_args, list), 'blocks_args should be a list'
         assert len(blocks_args) > 0, 'block args must be greater than 0'
         self._global_params = global_params
         self._blocks_args = blocks_args
+        self.model_name = model_name
 
         # Batch norm parameters
         bn_mom = 1 - self._global_params.batch_norm_momentum
@@ -295,14 +296,33 @@ class EfficientNet(nn.Module):
                 drop_connect_rate *= float(idx) / len(self._blocks)  # scale drop connect_rate
             x = block(x, drop_connect_rate=drop_connect_rate)
 
-            if idx == 10:
-                l1 = x
-            if idx == 17:
-                l2 = x
-            if idx == 37:
-                l3 = x
-            if idx == 54:
-                l4 = x
+            if self.model_name == 'efficientnet-b0':
+                if idx == 0:
+                    l1 = x
+                if idx == 4:
+                    l2 = x
+                if idx == 10:
+                    l3 = x
+                if idx == 15:
+                    l4 = x
+            if self.model_name == 'efficientnet-b3':
+                if idx == 1:
+                    l1 = x
+                if idx == 7:
+                    l2 = x
+                if idx == 17:
+                    l3 = x
+                if idx == 25:
+                    l4 = x
+            if self.model_name == 'efficientnet-b7':
+                if idx == 10:
+                    l1 = x
+                if idx == 17:
+                    l2 = x
+                if idx == 37:
+                    l3 = x
+                if idx == 54:
+                    l4 = x
 
             
         # Head
@@ -354,7 +374,7 @@ class EfficientNet(nn.Module):
         """
         cls._check_model_name_is_valid(model_name)
         blocks_args, global_params = get_model_params(model_name, override_params)
-        model = cls(blocks_args, global_params)
+        model = cls(model_name, blocks_args, global_params)
         model._change_in_channels(in_channels)
         return model
 
@@ -433,6 +453,12 @@ class EfficientNet(nn.Module):
 
 def efficentnet_b7(pretrained=True, **kwargs):
     return EfficientNet.from_pretrained('efficientnet-b7')
+
+def efficentnet_b0(pretrained=True, **kwargs):
+    return EfficientNet.from_pretrained('efficientnet-b0')
+
+def efficentnet_b3(pretrained=True, **kwargs):
+    return EfficientNet.from_pretrained('efficientnet-b3')
 
 if __name__ == '__main__':
 

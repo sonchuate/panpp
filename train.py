@@ -171,7 +171,7 @@ def save_checkpoint(state, checkpoint_path, cfg):
 
     if cfg.data.train.type in ['synth'] or \
             (state['iter'] == 0 and
-             state['epoch'] > cfg.train_cfg.epoch - 100 and
+             state['epoch'] > cfg.train_cfg.epoch - 300 and
              state['epoch'] % 10 == 0):
         file_name = 'checkpoint_%dep.pth.tar' % state['epoch']
         file_path = osp.join(checkpoint_path, file_name)
@@ -259,6 +259,9 @@ def main(args):
                      state_dict=model.state_dict(),
                      optimizer=optimizer.state_dict())
         save_checkpoint(state, checkpoint_path, cfg)
+        
+    write_log('Done.')
+
 
 
 if __name__ == '__main__':

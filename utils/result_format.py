@@ -18,7 +18,7 @@ class ResultFormat(object):
             os.makedirs(result_path)
 
     def write_result(self, img_name, outputs):
-        if 'IC15' in self.data_type:
+        if 'IC15' in self.data_type or 'TBRAIN' in self.data_type:
             self._write_result_ic15(img_name, outputs)
         elif 'TT' in self.data_type:
             self._write_result_tt(img_name, outputs)
@@ -41,13 +41,18 @@ class ResultFormat(object):
         lines = []
         for i, bbox in enumerate(bboxes):
             values = [int(v) for v in bbox]
-            if words is None:
-                line = '%d,%d,%d,%d,%d,%d,%d,%d\n' % tuple(values)
-                lines.append(line)
-            elif words[i] is not None:
-                line = '%d,%d,%d,%d,%d,%d,%d,%d' % tuple(
-                    values) + ',%s\n' % words[i]
-                lines.append(line)
+            # if words is None:
+            #     line = '%d,%d,%d,%d,%d,%d,%d,%d\n' % tuple(values)
+            #     lines.append(line)
+            # elif words[i] is not None:
+            #     line = '%d,%d,%d,%d,%d,%d,%d,%d' % tuple(
+            #         values) + ',%s\n' % words[i]
+            #     lines.append(line)
+            line = '%d' % values[0]
+            for v_id in range(1, len(values)):
+                line += ',%d' % values[v_id]
+            line += '\n'
+            lines.append(line)
 
         file_name = 'res_%s.txt' % img_name
         file_path = osp.join(tmp_folder, file_name)

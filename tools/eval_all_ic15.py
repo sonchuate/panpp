@@ -4,8 +4,12 @@ from natsort import natsorted
 
 def eval_tt():
 
-    config = 'pan_pp_tt.py'
-    checkpoints = 'pan_pp_tt'
+    config = 'pan_pp_ic15.py'
+    
+    # checkpoints = 'pan_pp_tt'
+    # checkpoints = 'pan_pp_ctw'
+    # checkpoints = 'pan_pp_synth'
+    checkpoints = 'pan_pp_ic15_exp90'
 
 
     model_root = '/root/Storage/panpp/checkpoints/'+ checkpoints +'/'
@@ -29,10 +33,10 @@ def eval_tt():
                 model_root + model
             ])
 
-            os.chdir('/root/Storage/panpp/eval/tt')
+            os.chdir('/root/Storage/panpp/eval/ic15')
 
             subprocess.call([
-                '/root/anaconda3/envs/py27/bin/python', 'Deteval.py'
+                '/root/anaconda3/envs/py27/bin/python', 'script.py', '-g=gt.zip', '-s=../../outputs/submit_ic15.zip'
             ])
 
             # break

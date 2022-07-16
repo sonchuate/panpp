@@ -4,9 +4,26 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
-from ..attention import cbam
+from ..attention import attn_v5_2 as attn
 
 # from ..utils import Conv_BN_ReLU
+
+class h_sigmoid(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_sigmoid, self).__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        return F.relu6(x + 3., inplace=self.inplace) / 6.
+
+class h_swish(nn.Module):
+    def __init__(self, inplace=True):
+        super(h_swish, self).__init__()
+        self.inplace = inplace
+
+    def forward(self, x):
+        out = F.relu6(x + 3., self.inplace) / 6.
+        return out * x
 
 def _middle_cat(u, d):
 
@@ -24,63 +41,23 @@ def _middle_cat(u, d):
     return f
 
 
-class Middle_attn(nn.Module): # upsamle y to x's size
+class Attention_Module(nn.Module): # upsamle y to x's size
 
     def __init__(self,input_channel):
-        super(Middle_attn, self).__init__()
+        super(Attention_Module, self).__init__()
 
-        self.cbam_top = cbam(input_channel)
-        self.cbam_bot = cbam(input_channel)
+        self.attn = attn(input_channel)
 
-    def forward(self, u, d, m):
+    def forward(self, top, bot, mid):
 
-        _, _, m_H, m_W = m.size()
+        _, _, m_H, m_W = mid.size()
 
-        u = F.adaptive_avg_pool2d(u, (m_H, m_W))
-        d = F.upsample(d, (m_H, m_W), mode='bilinear')
+        top = F.adaptive_avg_pool2d(top, (m_H, m_W))
+        bot = F.upsample(bot, (m_H, m_W), mode='bilinear')
 
-        out_u = self.cbam_top(u, m)
-        out_d = self.cbam_top(d, m)
-
-        out = out_u + out_d
-
-        ######
-        # u = self.cbam_top(u)
-        # d = self.cbam_bot(d)
-
-        # out_u = m * u * 0.5
-        # out_d = m * d * 0.5
-
-        # out = out_u + out_d
-
-        ######
-        # out = m * u * d
+        out = self.attn(top, bot, mid)
 
         return out
-
-class Adaptive_attn(nn.Module): # upsamle y to x's size
-
-    def __init__(self,input_channel):
-        super(Adaptive_attn, self).__init__()
-
-        self.cbam = cbam(input_channel)
-
-
-    def forward(self, x, y):
-
-        _, _, H, W = x.size()
-
-        y = F.upsample(y, size=(H, W), mode='bilinear')
-
-        out = self.cbam(y, x)
-
-        ######
-        # y = self.cbam(y)
-
-        # out = x * y
-
-        return out
-
 
 class Conv_BN_ReLU(nn.Module):
     def __init__(self,
@@ -98,6 +75,7 @@ class Conv_BN_ReLU(nn.Module):
                               bias=False)
         self.bn = nn.BatchNorm2d(out_planes)
         self.relu = nn.ReLU(inplace=True)
+        # self.relu = h_swish()
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -117,13 +95,16 @@ class Conv_block(nn.Module):
         self.dwconv = nn.Conv2d(in_channels, in_channels, kernel_size=3, stride=stride, padding=1, groups=in_channels, bias=False)
         self.smooth_layer = Conv_BN_ReLU(in_channels, in_channels)
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
-
+        self.bn = nn.BatchNorm2d(out_channels)
+        # self.relu = nn.ReLU(inplace=True)
 
     def forward(self, x):
 
         x = self.dwconv(x)
         x = self.smooth_layer(x)
         x = self.conv(x)
+        x = self.bn(x)
+        # x = self.relu(x)
 
         return x
 
@@ -146,44 +127,46 @@ class repeat_block(nn.Module):
         self.F3 = Conv_block(in_channels=planes, out_channels=planes, stride=1)
         self.F4 = Conv_block(in_channels=planes, out_channels=planes, stride=1)
 
-        self.L1_adaptive_attn = Adaptive_attn(planes)
-        self.L2_middle_attn = Middle_attn(planes)
-        self.L3_middle_attn = Middle_attn(planes)
-        self.L4_adaptive_attn = Adaptive_attn(planes)
+        self.L1_attn_module = Attention_Module(planes)
+        self.L2_attn_module = Attention_Module(planes)
+        self.L3_attn_module = Attention_Module(planes)
+        self.L4_attn_module = Attention_Module(planes)
 
-        self.M1_middle_attn = Middle_attn(planes)
-        self.M2_middle_attn = Middle_attn(planes)
-        self.M3_middle_attn = Middle_attn(planes)
+        self.M1_attn_module = Attention_Module(planes)
+        self.M2_attn_module = Attention_Module(planes)
+        self.M3_attn_module = Attention_Module(planes)
 
-        self.F1_adaptive_attn = Adaptive_attn(planes)
-        self.F2_middle_attn = Middle_attn(planes)
-        self.F3_middle_attn = Middle_attn(planes)
-        self.F4_adaptive_attn = Adaptive_attn(planes)
+        self.F1_attn_module = Attention_Module(planes)
+        self.F2_attn_module = Attention_Module(planes)
+        self.F3_attn_module = Attention_Module(planes)
+        self.F4_attn_module = Attention_Module(planes)
 
     def forward(self, features):
 
         f1, E1, f2, E2, f3, E3, f4 = features
 
-        L1 = self.L1(self.L1_adaptive_attn(f1,E1))
-        L2 = self.L2(self.L2_middle_attn(E1,E2,m=f2))
-        L3 = self.L3(self.L3_middle_attn(E2,E3,m=f3))
-        L4 = self.L4(self.L4_adaptive_attn(f4,E3))
+        L1 = self.L1(self.L1_attn_module(f1,E1,f1)) # top bot mid
+        L2 = self.L2(self.L2_attn_module(E1,E2,f2))
+        L3 = self.L3(self.L3_attn_module(E2,E3,f3))
+        L4 = self.L4(self.L4_attn_module(E3,f4,f4))
 
-        M1 = self.M1(self.M1_middle_attn(L1,L2,m=E1))
-        M2 = self.M2(self.M2_middle_attn(L2,L3,m=E2))
-        M3 = self.M3(self.M3_middle_attn(L3,L4,m=E3))
+        M1 = self.M1(self.M1_attn_module(L1,L2,E1))
+        M2 = self.M2(self.M2_attn_module(L2,L3,E2))
+        M3 = self.M3(self.M3_attn_module(L3,L4,E3))
 
-        F1 = self.F1(self.F1_adaptive_attn(L1,M1))
-        F2 = self.F2(self.F2_middle_attn(M1,M2,m=L2))
-        F3 = self.F3(self.F3_middle_attn(M2,M3,m=L3))
-        F4 = self.F4(self.F4_adaptive_attn(L4,M3))
+        # F1 = self.F1(self.F1_attn_module(L1,M1,L1))
+        F1 = self.F1(self.F1_attn_module(f1,M1,L1))
+        F2 = self.F2(self.F2_attn_module(M1,M2,L2))
+        F3 = self.F3(self.F3_attn_module(M2,M3,L3))
+        # F4 = self.F4(self.F4_attn_module(M3,L4,L4))
+        F4 = self.F4(self.F4_attn_module(M3,f4,L4))
 
         return F1, M1, F2, M2, F3, M3, F4
 
-class FPN_v3_1(nn.Module):
+class FPN_v3_3_2(nn.Module):
 
     def __init__(self, in_channels, out_channels):
-        super(FPN_v3_1, self).__init__()
+        super(FPN_v3_3_2, self).__init__()
 
         planes = out_channels
 
@@ -197,7 +180,7 @@ class FPN_v3_1(nn.Module):
             self.fpn_layers.append(repeat_block(out_channels=planes))
         self.fpn = nn.Sequential(*self.fpn_layers)
 
-        self.last_conv = nn.Conv2d(planes, planes, kernel_size=1, stride=1, padding=0, bias=False)
+        self.last_conv = Conv_BN_ReLU(planes, planes)
 
 
 
@@ -214,8 +197,10 @@ class FPN_v3_1(nn.Module):
         features = self.fpn(features)
 
         # conv 1x1
+        last_features = []
         for f in features:
-            f = self.last_conv(f)
+            last_features.append(self.last_conv(f))
+        features = last_features
 
         F1, M1, F2, M2, F3, M3, F4 = features
 
