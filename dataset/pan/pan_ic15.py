@@ -340,7 +340,7 @@ class PAN_IC15(data.Dataset):
             word = word.lower()
             gt_word = np.full((self.max_word_len, ),
                               self.char2id['PAD'],
-                              dtype=np.int)
+                              dtype=np.int32)
             for j, char in enumerate(word):
                 if j > self.max_word_len - 1:
                     break
