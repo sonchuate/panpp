@@ -76,7 +76,7 @@ class PA_Head(nn.Module):
         label_num = np.max(label) + 1
         label = cv2.resize(label, (int(img_size[1]), int(img_size[0])),
                            interpolation=cv2.INTER_NEAREST)
-        score = cv2.resize(score, (img_size[1], img_size[0]),
+        score = cv2.resize(score, (int(img_size[1]), int(img_size[0])),
                            interpolation=cv2.INTER_NEAREST)
 
         if not self.training and cfg.report_speed:
