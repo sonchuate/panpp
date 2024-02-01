@@ -51,7 +51,7 @@ data = dict(
 train_cfg = dict(
     lr=1e-3,
     schedule='polylr',
-    epoch=3,
+    epoch=1,
     optimizer='Adam'
 )
 test_cfg = dict(
