@@ -176,6 +176,7 @@ class Res_layer(nn.Module):
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
         super(ResNet, self).__init__()
+        print('resnet')
         self.inplanes = 128
         self.conv1 = conv3x3(3, 64, stride=2)
         self.bn1 = nn.BatchNorm2d(64)

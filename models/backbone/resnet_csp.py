@@ -179,6 +179,7 @@ class Res_layer(nn.Module):
 
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000):
+        print('resnet_csp')
         super(ResNet, self).__init__()
         self.inplanes = 128
         self.conv1 = conv3x3(3, 64, stride=2)

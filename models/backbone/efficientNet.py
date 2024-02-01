@@ -162,6 +162,7 @@ class EfficientNet(nn.Module):
 
     def __init__(self, model_name, blocks_args=None, global_params=None):
         super().__init__()
+        print('effecien net')
         assert isinstance(blocks_args, list), 'blocks_args should be a list'
         assert len(blocks_args) > 0, 'block args must be greater than 0'
         self._global_params = global_params
