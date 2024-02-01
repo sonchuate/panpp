@@ -39,6 +39,7 @@ class PAN(nn.Module):
                 gt_bboxes=None,
                 img_metas=None,
                 cfg=None):
+        print(imgs.shape)
         outputs = dict()
 
         if not self.training and cfg.report_speed:
