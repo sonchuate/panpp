@@ -51,7 +51,7 @@ cdef np.ndarray[np.int32_t, ndim=2] _pa(np.ndarray[np.uint8_t, ndim=3] kernels,
 
                 if flag[j] == 0:
                     flag[j] = 1
-                    mean_emb[j] = np.mean(emb[:, inds[j].astype(np.bool)], axis=1)
+                    mean_emb[j] = np.mean(emb[:, inds[j].astype(bool)], axis=1)
 
     cdef libcpp.queue.queue[libcpp.pair.pair[np.int16_t, np.int16_t]] que = \
         queue[libcpp.pair.pair[np.int16_t, np.int16_t]]()
