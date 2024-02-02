@@ -39,7 +39,6 @@ class PAN(nn.Module):
                 gt_bboxes=None,
                 img_metas=None,
                 cfg=None):
-        print(imgs.shape)
         outputs = dict()
 
         if not self.training and cfg.report_speed:
@@ -87,16 +86,12 @@ class PAN(nn.Module):
             outputs.update(dict(det_head_time=time.time() - start))
 
         if self.training:
-            print('imgs')
-            print(imgs.shape)
             det_out = self._upsample(det_out, imgs.size())
             det_loss = self.det_head.loss(det_out, gt_texts, gt_kernels,
                                           training_masks, gt_instances,
                                           gt_bboxes)
             outputs.update(det_loss)
         else:
-            print('img_metas')
-            print(img_metas)
             det_out = self._upsample(det_out, imgs.size(), 4)
             det_res = self.det_head.get_results(det_out, img_metas, cfg)
             outputs.update(det_res)
