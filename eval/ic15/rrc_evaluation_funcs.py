@@ -8,7 +8,6 @@ import sys
 import os
 import codecs
 import importlib
-from StringIO import StringIO
 
 def print_help():
     sys.stdout.write('Usage: python %s.py -g=<gtFile> -s=<submFile> [-o=<outputFolder> -p=<jsonParams>]' %sys.argv[0])
