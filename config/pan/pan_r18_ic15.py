@@ -49,7 +49,7 @@ data = dict(
     )
 )
 train_cfg = dict(
-    lr=1e-4,
+    lr=1e-2,
     schedule='polylr',
     epoch=10,
     optimizer='Adam'
